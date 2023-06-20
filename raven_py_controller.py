@@ -40,7 +40,7 @@ import sensor_msgs.msg
 import crtk_msgs.msg # crtk_msgs/operating_state
 
 import utils_r2_py_controller as utils
-
+import xbox_controller
 
 Deg2Rad = np.pi / 180.0
 Rad2Deg = 180.0 / np.pi
@@ -77,7 +77,9 @@ class raven2_py_controller():
         self.measured_jeff = None # (15,) array of measured joint effort
 
         self.pub_count_motion = 0 # The counts or how many motion command messages are sent
-
+        
+        #add xbox controller
+        self.cmd = xbox_controller()
         self.__init_pub_sub()
 
         return None
@@ -267,12 +269,27 @@ class raven2_py_controller():
     #created by Mai Bui 
     def pub_cr_command(self):
         msg = geometry_msgs.msg.TransformStamped()
+        
         #  tf::Transform trans = tf::Transform(tf::Quaternion(motion_vec,step_angle));
         #  out = robot->arm.send_servo_cr(trans);
         
         #  replace arm.get_servo_cr_command()  to xbox.get_servo_cr_command()
         #  tf::Transform cmd = arm.get_servo_cr_command(); 
         #  tf::transformTFToMsg(cmd,msg.transform);
+        msg.header.stamp = msg.header.stamp.now()
+        t = msg.transform
+        if self.robot_name == "arm1":
+            t.translation.x = self.cmd.get_lj_x()
+            t.translation.y = self.cmd.get_lj_y()
+            t.translation.z = self.cmd.get_lt()
+        elif self.robot_name == "arm2":
+            t.translation.x = self.cmd.get_rj_x()
+            t.translation.y = self.cmd.get_rj_y()
+            t.translation.z = self.cmd.get_rt()
+        interval_pub = time.time() - self.time_last_pub_move
+        #print(str(interval_pub)) # [debug]
+        if (self.time_last_pub_move != -1.0) & (interval_pub < self.min_interval_move):
+            time.sleep(self.min_interval_move-interval_pub)
         self.__publisher_servo_cr.publish(msg)
         self.time_last_pub_move = time.time()
         self.pub_count_motion += 1
