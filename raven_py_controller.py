@@ -56,14 +56,17 @@ class raven2_py_controller():
         #self.joint_velocity_factor = np.array([1e-5, 1e-5 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5]) # 1e-5 means target speed is 1.0cm (1e-5 m) per second
 
         self.max_jr = np.array([5*Deg2Rad, 5*Deg2Rad, 0.02, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
+        #add max_cr
+        self.max_cr = 0.00018
         self.rate_pub = 500 # !IMPT This is the publish rate of the motion command publisher. It must be tested, because it will affect the real time factor and thus affect the speed. If you are not sure or cannot test, use a large rate (such as 1000) can be safer.
+        self.rate_pub_cr = 1000
         self.max_rate_move = 500 # This is a protection, if the time interval between 2 move command is shorter than 1/rate, the publisher will wait util 1/rate
         self.min_interval_move = 1.0/self.max_rate_move
         self.pos_scaler = 1000.0/self.rate_pub # This is to scale the pos command to meet the target velocity
         self.time_last_pub_move = -1.0
 
         self.max_jr = self.max_jr / self.rate_pub
-
+        self.max_cr = self.max_jr / self.rate_pub_cr
 
         self.operate_state = None # [String] current robot operation state, according the CRTK standard - "DISABLED", "ENABLED", "PAUSED", "FAULT", robot can only be controlled when "ENABLED"
         self.is_homed = None 
@@ -142,6 +145,11 @@ class raven2_py_controller():
 
         return idx[0]
 
+    def __check_max_cr_command(self,coordinate):
+        diff = self.max_cr - np.abs(coordinate)
+        idx = np.array(np.where(diff<0))
+
+        return idx[0]
     def __callback_measured_cp(self, msg):
         # rot = sp_rot.from_quat([msg.transform.rotation.x, msg.transform.rotation.y, msg.transform.rotation.z, msg.transform.rotation.w])
 
@@ -268,24 +276,38 @@ class raven2_py_controller():
     
     #created by Mai Bui 
     def pub_cr_command(self):
+
         msg = geometry_msgs.msg.TransformStamped()
-        
-        #  tf::Transform trans = tf::Transform(tf::Quaternion(motion_vec,step_angle));
-        #  out = robot->arm.send_servo_cr(trans);
-        
-        #  replace arm.get_servo_cr_command()  to xbox.get_servo_cr_command()
-        #  tf::Transform cmd = arm.get_servo_cr_command(); 
-        #  tf::transformTFToMsg(cmd,msg.transform);
+        if self.robot_name == "arm1":
+            x = self.cmd.get_lj_x()
+            y = self.cmd.get_lj_y()
+            z = self.cmd.get_lt()
+
+        elif self.robot_name == "arm2":
+            x = self.cmd.get_rj_x()
+            y = self.cmd.get_rj_y()
+            z = self.cmd.get_rt()
+
+        cmd_coor = [x,y,z]
+        max_check = self.__check_max_cr_command(cmd_coor)
+        if max_check.size != 0:
+            print('Command velocity too fast, axis: ')
+            for axis in max_check:
+                if axis == 0:
+                    print("x")
+                elif axis == 1:
+                    print("y")
+                elif axis == 2:
+                    print("z")
+            print('Command not sent')
+            return -1
+    
         msg.header.stamp = msg.header.stamp.now()
         t = msg.transform
-        if self.robot_name == "arm1":
-            t.translation.x = self.cmd.get_lj_x()
-            t.translation.y = self.cmd.get_lj_y()
-            t.translation.z = self.cmd.get_lt()
-        elif self.robot_name == "arm2":
-            t.translation.x = self.cmd.get_rj_x()
-            t.translation.y = self.cmd.get_rj_y()
-            t.translation.z = self.cmd.get_rt()
+        t.translation.x = x
+        t.translation.y = y
+        t.translation.z = z
+
         interval_pub = time.time() - self.time_last_pub_move
         #print(str(interval_pub)) # [debug]
         if (self.time_last_pub_move != -1.0) & (interval_pub < self.min_interval_move):
@@ -296,5 +318,4 @@ class raven2_py_controller():
 
         #print('Command pub count: ' + str(self.pub_count_motion) + ' | msg: ' + str(joint_command)) # [debug]
 
-        return 0
-    
+        return 0    
