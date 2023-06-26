@@ -1,5 +1,6 @@
 import raven_py_controller
 import xbox_controller
+from ambf_raven_def import *
 """
 Raven 2 Control - Control software for the Raven II robot
 Copyright (C) 2005-2022  Andrew Lewis, Yun-Hsuan Su, Haonan Peng, Blake Hannaford,
@@ -67,140 +68,94 @@ time_last_key_command = 0
 count_interval_cmd = 101
 
 xbox = xbox_controller()
-buttons = xbox.get_buttons()
+controller = xbox.read()
+arm_control = [True, True]
+dead_zone = 0.1
 
+#initialize x,y,z for both arms
+x = [0,0]
+y = [0,0]
+z = [0,0]
+
+#initialize grasper angles for both arms
+gangle = [0,0]
+#arm_control is a list of boolean: 0 is arm left, 1 is arm right 
 while working==1:
 
-    # if time.time() - time_last_key_command >= command_interval:
-    #     print('--------------------------------------------------------------------------------')
-    #     print('--------------------------------------------------------------------------------')
-    #     print('--------------------------------------------------------------------------------')
-    #     time_last_key_command = time.time()
-    #     input_key = sys.stdin.read(1)[0]
+    '''
+    Manual control mode for the simulated raven2 using an xbox controller. There are two
+    modes. The first enables simultaneous control of both arms on the xyz axes, but locks
+    joints 4, 5, and 6 to their home positions. Accessed by simultaneously pressing back 
+    and start buttons.
+    
+    Left stick: left arm x and y
+    Left trigger: left arm gripper open close
+    Left button: when pressed left stick up and down controls left arm z
+    Right stick: right arm x and y
+    Right trigger: right arm gripper open close
+    Right button: when pressed right stick up and down controls right arm z
+    
+    The second control mode only controls one arm at a time, but adds control of joints 4 and 5.
+    Accessed by pressing back for the left arm and start for the right arm.
+    
+    Left stick: selected arm x and y
+    Left trigger: selected arm gripper open close
+    Left button: when pressed left stick up and down controls selected arm z
+    Right stick: controls grippers angle and rotation
+    '''
 
     if count_interval_cmd >= 100: 
         input_key = sys.stdin.read(1)[0]
         termios.tcflush(sys.stdin, termios.TCIOFLUSH)
         if input_key == '9':
             r2py_ctl_l.pub_state_command('pause')
-            sys.exit('Closing RAVEN 2 Keyboard controller')
+            sys.exit('Closing RAVEN 2 XBox controller')
         count_interval_cmd = 0
     count_interval_cmd += 1
 
-    if buttons[0] == 1:
-        utils.print_no_newline(" Moving: Joint 1 +++         ")
-        cmd = np.zeros((16))
-        cmd[1] = velocity_joint_1 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
+    # Set which control mode to use
+    if controller[2][4] and controller[2][5]:
+        arm_control[0] = True
+        arm_control[1] = True
+    elif controller[2][4]:
+        arm_control[0] = True
+        arm_control[1] = False
+    elif controller[2][5]:
+        arm_control[0] = False
+        arm_control[1] = True
+    
+    # mod 1: 2 arms controller
+    if arm_control[0] and arm_control[1]:
+        # update coordinates for left arm, x and y are swaped for more intuitive
+        if controller[0][3] == 1 and dead_zone < abs(controller[0][1]):
+            z[0] -controller[0][1] 
+        else: 
+            if dead_zone< abs(controller[0][0]):
+                y[0] = -controller[0][0] 
+            if dead_zone < abs(controller[0][1]):
+                x[0] = -controller[0][1]
 
-    elif buttons[0] == 0:
-        utils.print_no_newline(" Moving: Joint 1 ---         ")
-        cmd = np.zeros((16))
-        cmd[1] = -velocity_joint_1 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
+    # update coordinates for right arm, x and y are swaped
+    if controller[1][3] == 1 and dead_zone < abs (controller[1][1]):
+        z[1] = - controller[1][1] 
+    else:
+        if dead_zone < abs(controller[1][0]):
+            y[1] = -controller[1][0]
+        if dead_zone < abs(controller[1][1]):
+            x[1] = -controller[1][1]
 
-    elif buttons[1] == 1:
-        utils.print_no_newline(" Moving: Joint 2 +++         ")
-        cmd = np.zeros((16))
-        cmd[2] = velocity_joint_2 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-              
-    elif buttons[1] == 0:
-        utils.print_no_newline(" Moving: Joint 2 ---         ")
-        cmd = np.zeros((16))
-        cmd[2] = -velocity_joint_2 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
+    #Set gripper angles
+    gangle[0] = 1 - (controller[0][2]/4)
+    #graspher right angle is opposite --> negative
+    gangle[1] = -1 + (controller[1][2]/4)
 
-    elif buttons[2] == 1:
-        utils.print_no_newline(" Moving: Joint 3 +++         ")
-        cmd = np.zeros((16))
-        cmd[3] = velocity_joint_3 * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-        
-    elif buttons[2] == 0:
-        utils.print_no_newline(" Moving: Joint 3 ---         ")
-        cmd = np.zeros((16))
-        cmd[3] = -velocity_joint_3 * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
 
-    elif buttons[3] == 1:
-        utils.print_no_newline(" Moving: Joint 4 +++         ")
-        cmd = np.zeros((16))
-        cmd[4] = velocity_joint_4 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-        
-    elif buttons[3] == 0:
-        utils.print_no_newline(" Moving: Joint 4 ---         ")
-        cmd = np.zeros((16))
-        cmd[4] = -velocity_joint_4 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
+    lpos = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
+    r2py_ctl_l.pub_jr_command(lpos)
 
-    elif buttons[4]== 1:
-        utils.print_no_newline(" Moving: Joint 5 +++         ")
-        cmd = np.zeros((16))
-        cmd[5] = velocity_joint_5 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-        
-    elif buttons[4] == 0:
-        utils.print_no_newline(" Moving: Joint 5 ---         ")
-        cmd = np.zeros((16))
-        cmd[5] = -velocity_joint_5 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
 
-    elif buttons[5] == 1:
-        utils.print_no_newline(" Moving: Joint 6 +++         ")
-        cmd = np.zeros((16))
-        cmd[6] = velocity_joint_6 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-        
-    elif buttons[5] == 0:
-        utils.print_no_newline(" Moving: Joint 6 ---         ")
-        cmd = np.zeros((16))
-        cmd[6] = -velocity_joint_6 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-
-    elif buttons[6] == 1:
-        utils.print_no_newline(" Moving: Joint 7 +++         ")
-        cmd = np.zeros((16))
-        cmd[7] = velocity_joint_7 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-        
-    elif buttons[6] == 0:
-        utils.print_no_newline(" Moving: Joint 7 ---         ")
-        cmd = np.zeros((16))
-        cmd[7] = -velocity_joint_7 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-
-    elif buttons[9] == 1:
-        utils.print_no_newline(" Moving: Grasper Left open         ")
-        cmd = np.zeros((16))
-        cmd[6] = velocity_joint_6 * Deg2Rad * 1e-3
-        cmd[7] = velocity_joint_7 * Deg2Rad * 1e-3
-        r2py_ctl_l.pub_jr_command(cmd)
-
-    elif buttons[9] == 0:
-        utils.print_no_newline(" Moving: Grasper Left close         ")
-        cmd = np.zeros((16))
-        cmd[6] = -velocity_joint_6 * Deg2Rad * 1e-3
-        cmd[7] = -velocity_joint_7 * Deg2Rad * 1e-3
-        r2py_ctl_r.pub_jr_command(cmd)
-        
-    elif buttons[10] == 1:
-        utils.print_no_newline(" Moving: Grasper Right open         ")
-        cmd = np.zeros((16))
-        cmd[14] = velocity_joint_6 * Deg2Rad * 1e-3
-        cmd[14] = velocity_joint_7 * Deg2Rad * 1e-3
-        r2py_ctl_r.pub_jr_command(cmd)
-
-    elif buttons[10] == 0:
-        utils.print_no_newline(" Moving: Grasper Right close         ")
-        cmd = np.zeros((16))
-        cmd[15] = -velocity_joint_6 * Deg2Rad * 1e-3
-        cmd[15] = -velocity_joint_7 * Deg2Rad * 1e-3
-        r2py_ctl_r.pub_jr_command(cmd)
-    # Cartisian space control----------------------------------------------
-    r2py_ctl_l.pub_cr_command()
-    r2py_ctl_r.pub_cr_command()
+    rpos = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
+    r2py_ctl_r.pub_jr_command(rpos)
 
 termios.tcsetattr(sys.stdin, termios.TCSADRAIN,filedescriptors)
 

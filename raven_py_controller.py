@@ -45,6 +45,9 @@ import xbox_controller
 Deg2Rad = np.pi / 180.0
 Rad2Deg = 180.0 / np.pi
 
+import raven_fk as fk
+import raven_ik as ik 
+import ambf_raven_def as ard
 class raven2_py_controller():
 
     # ros node is not initialized here, it should be initialized and named by the program that use this controller
@@ -85,6 +88,8 @@ class raven2_py_controller():
         self.cmd = xbox_controller()
         self.__init_pub_sub()
 
+        #boolean if pass the limit
+        self.limited = [False, False]
         return None
 
     def __del__(self):
@@ -275,19 +280,9 @@ class raven2_py_controller():
         return 0
     
     #created by Mai Bui 
-    def pub_cr_command(self):
+    def pub_cr_command(self,x,y,z):
 
         msg = geometry_msgs.msg.TransformStamped()
-        if self.robot_name == "arm1":
-            x = self.cmd.get_lj_x()
-            y = self.cmd.get_lj_y()
-            z = self.cmd.get_lt()
-
-        elif self.robot_name == "arm2":
-            x = self.cmd.get_rj_x()
-            y = self.cmd.get_rj_y()
-            z = self.cmd.get_rt()
-
         cmd_coor = [x,y,z]
         max_check = self.__check_max_cr_command(cmd_coor)
         if max_check.size != 0:
@@ -319,3 +314,41 @@ class raven2_py_controller():
         #print('Command pub count: ' + str(self.pub_count_motion) + ' | msg: ' + str(joint_command)) # [debug]
 
         return 0    
+
+    def manual_move(self, arm, x, y, z, gangle, p5=False, home_dh=ard.HOME_DH):
+        """
+        moves the desired robot arm based on inputted changes to cartesian coordinates
+        Args:
+            arm (int) : 0 for the left arm and 1 for the right arm
+            x (float) : the desired change to the x coordinate
+            y (float) : the desired change to the y coordinate
+            z (float) : the desired change to the z coordinate
+            gangle (float) : the gripper angle, 0 is closed
+            p5 (bool) : when false uses standard kinematics, when true uses p5 kinematics
+            home_dh (array) : array containing home position, or desired postion of the
+                joints not set by cartesian coordinates in inv_kinematics_p5
+        """
+        curr_jp = np.array(self.measured_jpos, dtype="float")
+        if p5:
+            curr_tm = fk.fwd_kinematics_p5(arm, curr_jp)
+        else:
+            curr_tm = fk.fwd_kinematics(arm, curr_jp)
+        curr_tm[0, 3] += x
+        curr_tm[1, 3] += y
+        curr_tm[2, 3] += z
+        if p5:
+            jpl = ik.inv_kinematics_p5(arm, curr_tm, gangle, home_dh)
+        else:
+            jpl = ik.inv_kinematics(arm, curr_tm, gangle)
+        self.limited[arm] = jpl[1]
+        if self.limited[arm]:
+            print("Desired cartesian position is out of bounds for Raven2. Will move to max pos.")
+        new_jp = jpl[0]
+        jr = np.zeros(16)
+        for i in jr.size():
+            np.append(jr, new_jp[i] - curr_jp[i])
+        
+        return jr
+
+        # print("fk ", timeit.timeit(lambda: fk.fwd_kinematics_p5(arm, curr_jp), setup="pass",number=1))
+        # print("ik ", timeit.timeit(lambda: ik.inv_kinematics_p5(arm, curr_tm, gangle), setup="pass", number=1))
