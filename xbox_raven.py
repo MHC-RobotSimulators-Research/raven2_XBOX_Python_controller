@@ -70,16 +70,20 @@ count_interval_cmd = 101
 xbox = xbox_controller()
 controller = xbox.read()
 arm_control = [True, True]
+# how much the raw input values will be divided into x,y,z
+div = 1000 # may change later if too slow
 dead_zone = 0.1
 
-#initialize x,y,z for both arms
+# initialize x,y,z for both arms
 x = [0,0]
 y = [0,0]
 z = [0,0]
 
-#initialize grasper angles for both arms
+# initialize grasper angles for both arms
 gangle = [0,0]
-#arm_control is a list of boolean: 0 is arm left, 1 is arm right 
+# DH values for home position of each arm
+home_dh = HOME_DH
+# arm_control is a list of boolean: 0 is arm left, 1 is arm right 
 while working==1:
 
     '''
@@ -128,35 +132,89 @@ while working==1:
     if arm_control[0] and arm_control[1]:
         # update coordinates for left arm, x and y are swaped for more intuitive
         if controller[0][3] == 1 and dead_zone < abs(controller[0][1]):
-            z[0] -controller[0][1] 
+            z[0] = -controller[0][1] / div
         else: 
             if dead_zone< abs(controller[0][0]):
-                y[0] = -controller[0][0] 
+                y[0] = -controller[0][0] / div
             if dead_zone < abs(controller[0][1]):
-                x[0] = -controller[0][1]
+                x[0] = -controller[0][1] / div
 
-    # update coordinates for right arm, x and y are swaped
-    if controller[1][3] == 1 and dead_zone < abs (controller[1][1]):
-        z[1] = - controller[1][1] 
-    else:
-        if dead_zone < abs(controller[1][0]):
-            y[1] = -controller[1][0]
-        if dead_zone < abs(controller[1][1]):
-            x[1] = -controller[1][1]
+        # update coordinates for right arm, x and y are swaped
+        if controller[1][3] == 1 and dead_zone < abs (controller[1][1]):
+            z[1] = - controller[1][1] / div
+        else:
+            if dead_zone < abs(controller[1][0]):
+                y[1] = -controller[1][0] / div
+            if dead_zone < abs(controller[1][1]):
+                x[1] = -controller[1][1] / div
 
-    #Set gripper angles
-    gangle[0] = 1 - (controller[0][2]/4)
-    #graspher right angle is opposite --> negative
-    gangle[1] = -1 + (controller[1][2]/4)
-
-
-    lpos = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
-    r2py_ctl_l.pub_jr_command(lpos)
+        # Set gripper angles
+        gangle[0] = 1 - (controller[0][2]/4) 
+        # graspher right angle is opposite --> negative
+        gangle[1] = -1 + (controller[1][2]/4)
 
 
-    rpos = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
-    r2py_ctl_r.pub_jr_command(rpos)
+        lpos = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
+        r2py_ctl_l.pub_jr_command(lpos)
+
+
+        rpos = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
+        r2py_ctl_r.pub_jr_command(rpos)
+
+    # mod 2: fine control of one arm
+    elif arm_control[0] or arm_control[1]:
+
+        # Decide which arm to control
+        arm = 0 # default: left arm
+        if arm_control[1]:
+            arm = 1 # click Back to switch to right arm
+        
+        # Cartesian control of desired arm
+        if controller[0][3] == 1 and dead_zone < abs(controller[0][1]):
+            z[arm] = -controller[0][1] / div
+        else:
+            if dead_zone < abs(controller[0][0]):
+                y[arm] = -controller[0][0] / div
+            if dead_zone < abs(controller[0][1]):
+                x[arm] = -controller[0][1] / div
+            
+        # Set gripper angle
+        if arm_control[0]:
+            gangle[0] = 1 - (controller[0][2] / 4)
+        else:
+            gangle[1] = -1 + (controller[1][2] / 4)
+        
+        # Controller gripper position using home_dh values
+        if dead_zone < abs(controller[1][0]) or dead_zone < abs(controller[1][1]):
+            # Position j5
+            j5 = m.sqrt(controller[1][0] ** 2 + controller[1][1] **2)
+            if controller[1][0] < 0:
+                home_dh [arm][4] = j5
+            else:
+                home_dh[arm][4] = -j5
+            
+            # Position j4
+            j4 = m.atan(controller[1][1] / controller[1][0])
+            home_dh[arm][3] = j4
+
+        # Plan new position based off of desired cartesian changes
+        if arm == 0:
+            lpos = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
+            r2py_ctl_l.pub_jr_command(lpos)
+
+        elif arm == 1:
+            rpos = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
+            r2py_ctl_r.pub_jr_command(rpos)
+    
 
 termios.tcsetattr(sys.stdin, termios.TCSADRAIN,filedescriptors)
 
-
+# rumble the controller when raven is limited
+# note: optional, will check when finish core moving functions
+def rumble (arm):
+    rumble = [0.0, 0.0]
+    for i in range(2):
+        if arm.limited[i]:
+            rumble[i] = 1
+if rumble[0] != 0.0 or rumble[1] != 0.0:
+    xbox.rumble(rumble[0], rumble[1], 100)

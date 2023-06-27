@@ -344,6 +344,7 @@ class raven2_py_controller():
         if self.limited[arm]:
             print("Desired cartesian position is out of bounds for Raven2. Will move to max pos.")
         new_jp = jpl[0]
+        #transform new joint position into joint position to increment
         jr = np.zeros(16)
         for i in jr.size():
             np.append(jr, new_jp[i] - curr_jp[i])
