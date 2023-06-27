@@ -4,7 +4,7 @@ from inputs import devices
 import math
 import threading
 
-class XboxController(object):
+class xbox_controller():
     """
     Gets the state of xbox controller inputs using the inputs library. Modified from
     https://stackoverflow.com/questions/46506850/how-can-i-get-input-from-an-xbox-one-controller-in-python
@@ -58,6 +58,8 @@ class XboxController(object):
         except OSError:
             print("no space left on device")
 
+    def check(self):
+        print('a')
     def _monitor_controller(self):
         while True:
             try:
@@ -108,7 +110,7 @@ class XboxController(object):
                     self.DownDPad = event.state
 
 if __name__ == '__main__':
-    joy = XboxController()
+    joy = xbox_controller()
     joy.rumble(1, 1, 100)
 
     while True:
