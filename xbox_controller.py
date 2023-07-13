@@ -4,7 +4,7 @@ from inputs import devices
 import math
 import threading
 
-class xbox_controller():
+class xbox_controller:
     """
     Gets the state of xbox controller inputs using the inputs library. Modified from
     https://stackoverflow.com/questions/46506850/how-can-i-get-input-from-an-xbox-one-controller-in-python
@@ -52,11 +52,11 @@ class xbox_controller():
         return [[lx, ly, lt, lb], [rx, ry, rt, rb],
                 [self.A, self.B, self.X, self.Y, self.Back, self.Start]]
 
-    def rumble(self, left, right, time):
-        try:
-            self.gamepad.set_vibration(left, right, time)
-        except OSError:
-            print("no space left on device")
+    # def rumble(self, left, right, time):
+    #     try:
+    #         self.gamepad.set_vibration(left, right, time)
+    #     except OSError:
+    #         print("no space left on device")
 
     def check(self):
         print('a')
@@ -69,17 +69,17 @@ class xbox_controller():
 
             for event in events:
                 if event.code == 'ABS_Y':
-                    self.LeftJoystickY = event.state / XboxController.MAX_JOY_VAL # normalize between -1 and 1
+                    self.LeftJoystickY = event.state / xbox_controller.MAX_JOY_VAL # normalize between -1 and 1
                 elif event.code == 'ABS_X':
-                    self.LeftJoystickX = event.state / XboxController.MAX_JOY_VAL # normalize between -1 and 1
+                    self.LeftJoystickX = event.state / xbox_controller.MAX_JOY_VAL # normalize between -1 and 1
                 elif event.code == 'ABS_RY':
-                    self.RightJoystickY = event.state / XboxController.MAX_JOY_VAL # normalize between -1 and 1
+                    self.RightJoystickY = event.state / xbox_controller.MAX_JOY_VAL # normalize between -1 and 1
                 elif event.code == 'ABS_RX':
-                    self.RightJoystickX = event.state / XboxController.MAX_JOY_VAL # normalize between -1 and 1
+                    self.RightJoystickX = event.state / xbox_controller.MAX_JOY_VAL # normalize between -1 and 1
                 elif event.code == 'ABS_Z':
-                    self.LeftTrigger = event.state / XboxController.MAX_TRIG_VAL # normalize between 0 and 1
+                    self.LeftTrigger = event.state / xbox_controller.MAX_TRIG_VAL # normalize between 0 and 1
                 elif event.code == 'ABS_RZ':
-                    self.RightTrigger = event.state / XboxController.MAX_TRIG_VAL # normalize between 0 and 1
+                    self.RightTrigger = event.state / xbox_controller.MAX_TRIG_VAL # normalize between 0 and 1
                 elif event.code == 'BTN_TL':
                     self.LeftBumper = event.state
                 elif event.code == 'BTN_TR':
@@ -111,7 +111,11 @@ class xbox_controller():
 
 if __name__ == '__main__':
     joy = xbox_controller()
-    joy.rumble(1, 1, 100)
+    print(joy)
+    # joy.rumble(1, 1, 100)
 
     while True:
+        # for event in get_gamepad():
+
+        #     print(event.code)
         print(joy.read())

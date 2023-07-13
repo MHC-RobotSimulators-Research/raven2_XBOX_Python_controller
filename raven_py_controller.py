@@ -38,9 +38,8 @@ import geometry_msgs.msg
 import sensor_msgs.msg
 
 import crtk_msgs.msg # crtk_msgs/operating_state
-
 import utils_r2_py_controller as utils
-import xbox_controller
+from xbox_controller import xbox_controller
 
 Deg2Rad = np.pi / 180.0
 Rad2Deg = 180.0 / np.pi
@@ -69,6 +68,7 @@ class raven2_py_controller():
         self.time_last_pub_move = -1.0
 
         self.max_jr = self.max_jr / self.rate_pub
+        #max_jr is 0.00017453292
         self.max_cr = self.max_jr / self.rate_pub_cr
 
         self.operate_state = None # [String] current robot operation state, according the CRTK standard - "DISABLED", "ENABLED", "PAUSED", "FAULT", robot can only be controlled when "ENABLED"
@@ -146,6 +146,16 @@ class raven2_py_controller():
 
     def __check_max_jpose_command(self, joint_command):
         diff = self.max_jr - np.abs(joint_command)
+        print("joint command",joint_command)
+        #joint 2: 0.785398163
+        #joint 3: -0.0000000000000000000555111512
+        #joint 6: -0.5
+        #joint 7: -0.5
+        print("diff: ", diff)
+        #joint 1: 0.000174532925
+        #joint 2: -0.785223630
+        #joint 6: -0.5
+        #joint 7: -0.5
         idx = np.array(np.where(diff<0))
 
         return idx[0]
@@ -184,7 +194,7 @@ class raven2_py_controller():
             utils.print_ROS_INFO('Unknown state command of RAVEN, can not publish')
             return -1
 
-        msg_state_command = crtk_msgs.msg.StringStamped()
+        msg_state_command = crtk_msgs.msg.StringStamped
         msg_state_command.string = state_command
         #msg_state_command.header.stamp = msg_state_command.header.stamp.now() # used in c++, seems not necessary for Python
 
@@ -299,9 +309,9 @@ class raven2_py_controller():
     
         msg.header.stamp = msg.header.stamp.now()
         t = msg.transform
-        t.translation.x = x
-        t.translation.y = y
-        t.translation.z = z
+        t.translation.x = 0.00011
+        t.translation.y = 0.00012
+        t.translation.z = 0.00013
 
         interval_pub = time.time() - self.time_last_pub_move
         #print(str(interval_pub)) # [debug]
@@ -328,14 +338,17 @@ class raven2_py_controller():
             home_dh (array) : array containing home position, or desired postion of the
                 joints not set by cartesian coordinates in inv_kinematics_p5
         """
-        curr_jp = np.array(self.measured_jpos, dtype="float")
+        #curr_jp = np.array(self.measured_jpos, dtype="float")
+        #curr_jp = ard.HOME_JOINTS
+        curr_jp = np.zeros(7,dtype="float")
+        print("current joint positions: " + str(curr_jp))
         if p5:
             curr_tm = fk.fwd_kinematics_p5(arm, curr_jp)
         else:
             curr_tm = fk.fwd_kinematics(arm, curr_jp)
-        curr_tm[0, 3] += x
-        curr_tm[1, 3] += y
-        curr_tm[2, 3] += z
+        curr_tm[0, 3] += 0
+        curr_tm[1, 3] += 0
+        curr_tm[2, 3] += 0
         if p5:
             jpl = ik.inv_kinematics_p5(arm, curr_tm, gangle, home_dh)
         else:
@@ -344,11 +357,11 @@ class raven2_py_controller():
         if self.limited[arm]:
             print("Desired cartesian position is out of bounds for Raven2. Will move to max pos.")
         new_jp = jpl[0]
+        print(new_jp)
         #transform new joint position into joint position to increment
-        jr = np.zeros(16)
-        for i in jr.size():
-            np.append(jr, new_jp[i] - curr_jp[i])
-        
+        jr = np.zeros(7)
+        for i in range(len(jr)):
+            jr[i] = new_jp[i] - curr_jp[i]
         return jr
 
         # print("fk ", timeit.timeit(lambda: fk.fwd_kinematics_p5(arm, curr_jp), setup="pass",number=1))

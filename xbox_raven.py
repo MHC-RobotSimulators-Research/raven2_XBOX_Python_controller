@@ -1,5 +1,6 @@
+#!/usr/bin/env python
 import raven_py_controller
-import xbox_controller
+from xbox_controller import xbox_controller
 from ambf_raven_def import *
 """
 Raven 2 Control - Control software for the Raven II robot
@@ -65,7 +66,7 @@ working = 1
 utils.print_manu()
 
 time_last_key_command = 0
-count_interval_cmd = 101
+count_interval_cmd = 0
 
 xbox = xbox_controller()
 controller = xbox.read()
@@ -84,7 +85,7 @@ gangle = [0,0]
 # DH values for home position of each arm
 home_dh = HOME_DH
 # arm_control is a list of boolean: 0 is arm left, 1 is arm right 
-while working==1:
+while working==1 and count_interval_cmd<=100:
 
     '''
     Manual control mode for the simulated raven2 using an xbox controller. There are two
@@ -107,21 +108,25 @@ while working==1:
     Left button: when pressed left stick up and down controls selected arm z
     Right stick: controls grippers angle and rotation
     '''
+    
+    # if count_interval_cmd >= 100: 
+    #     input_key = sys.stdin.read(1)[0]
+    #     termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+    #     if input_key == '9':
+    #         r2py_ctl_l.pub_state_command('pause')
+    #         sys.exit('Closing RAVEN 2 XBox controller')
+    #     count_interval_cmd = 0
+    # count_interval_cmd += 1
 
-    if count_interval_cmd >= 100: 
-        input_key = sys.stdin.read(1)[0]
-        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
-        if input_key == '9':
-            r2py_ctl_l.pub_state_command('pause')
-            sys.exit('Closing RAVEN 2 XBox controller')
-        count_interval_cmd = 0
     count_interval_cmd += 1
-
+    
     # Set which control mode to use
     if controller[2][4] and controller[2][5]:
+        print("working both")
         arm_control[0] = True
         arm_control[1] = True
     elif controller[2][4]:
+        print("working left")
         arm_control[0] = True
         arm_control[1] = False
     elif controller[2][5]:
@@ -153,13 +158,18 @@ while working==1:
         # graspher right angle is opposite --> negative
         gangle[1] = -1 + (controller[1][2]/4)
 
-
+        #lpos is a 7 joint positions
         lpos = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
-        r2py_ctl_l.pub_jr_command(lpos)
+        print("new left joint position: ",lpos)
+        emptypos = np.zeros(8)
+        ljr = np.concatenate([np.zeros(1),lpos,emptypos])
+        r2py_ctl_l.pub_jr_command(ljr)
 
 
         rpos = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
-        r2py_ctl_r.pub_jr_command(rpos)
+        rjr = np.concatenate([np.zeros(1),rpos,emptypos])
+        print("new right joint position: "+ np.array2string(rpos))
+        r2py_ctl_r.pub_jr_command(rjr)
 
     # mod 2: fine control of one arm
     elif arm_control[0] or arm_control[1]:
@@ -211,10 +221,10 @@ termios.tcsetattr(sys.stdin, termios.TCSADRAIN,filedescriptors)
 
 # rumble the controller when raven is limited
 # note: optional, will check when finish core moving functions
-def rumble (arm):
-    rumble = [0.0, 0.0]
-    for i in range(2):
-        if arm.limited[i]:
-            rumble[i] = 1
-if rumble[0] != 0.0 or rumble[1] != 0.0:
-    xbox.rumble(rumble[0], rumble[1], 100)
+# def rumble (arm):
+#     rumble = [0.0, 0.0]
+#     for i in range(2):
+#         if arm.limited[i]:
+#             rumble[i] = 1
+# if rumble[0] != 0.0 or rumble[1] != 0.0:
+#     xbox.rumble(rumble[0], rumble[1], 100)

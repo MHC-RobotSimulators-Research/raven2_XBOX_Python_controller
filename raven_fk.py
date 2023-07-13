@@ -4,26 +4,27 @@ import numpy as np
 
 def joint_to_dhvalue(joint, arm):
     success = False
-    dhvalue = np.zeros(7, dtype = 'float')
+    dhvalue = np.zeros(7, dtype='float')
     if arm < 0 or arm >= RAVEN_ARMS or joint.size != RAVEN_JOINTS:
-        return success
+        print(str(joint.size))
+        print("arm: " + str(arm))
+        return success, dhvalue
     for i in range(RAVEN_JOINTS):
         if i != 2:
             if i == 5:
                 if arm == 0:
-                    dhvalue[i] =  (joint[i] - joint[i+1])
+                    dhvalue[i] = (joint[i] - joint[i + 1])
                 else:
-                    dhvalue[i] = -(joint[i] - joint[i+1])
+                    dhvalue[i] = -(joint[i] - joint[i + 1])
             else:
                 dhvalue[i] = joint[i]
                 while dhvalue[i] > m.pi:
-                    dhvalue[i] -= 2*m.pi
+                    dhvalue[i] -= 2 * m.pi
                 while dhvalue[i] < -m.pi:
-                    dhvalue[i] += 2*m.pi
+                    dhvalue[i] += 2 * m.pi
         else:
             dhvalue[i] = joint[i]
     success = True
-
     return success, dhvalue
 
 def fwd_trans(a, b, dh_alpha, dh_theta, dh_a, dh_d):
@@ -65,8 +66,7 @@ def fwd_kinematics(arm, input_joint_pos):
     dh_d = np.zeros(7, dtype = 'float')
 
     j2d = joint_to_dhvalue(input_joint_pos, arm)
-    worked = j2d[0]
-    jp_dh = j2d[1]
+    worked, jp_dh = j2d
 
     if worked == False:
         print("Something went wrong with joint to dh conversion")
@@ -85,7 +85,7 @@ def fwd_kinematics(arm, input_joint_pos):
 
     output_transformation = np.matmul(np.matmul(RAVEN_T_CB, RAVEN_T_B0[arm]), fwd_trans(0, 6, dh_alpha, dh_theta, dh_a, dh_d))
 
-
+    #print(type(output_transformation))
     return output_transformation
 
 def fwd_kinematics_p5(arm, input_joint_pos):
@@ -100,8 +100,7 @@ def fwd_kinematics_p5(arm, input_joint_pos):
     dh_d = np.zeros(7, dtype = 'float')
 
     j2d = joint_to_dhvalue(input_joint_pos, arm)
-    worked = j2d[0]
-    jp_dh = j2d[1]
+    worked, jp_dh = j2d
 
     if worked == False:
         print("Something went wrong with joint to dh conversion")
@@ -117,15 +116,15 @@ def fwd_kinematics_p5(arm, input_joint_pos):
         dh_a[i] = RAVEN_DH_A[arm][i]
 
     output_transformation = np.matmul(np.matmul(RAVEN_T_CB, RAVEN_T_B0[arm]), fwd_trans(0, 5, dh_alpha, dh_theta, dh_a, dh_d))
-
+    print(type(output_transformation))
     return output_transformation
 
-def main():
-    print("yes")
-    joint  = np.array([m.pi/6, m.pi/2, 0.4,    0,   0,       m.pi/4,       m.pi/4],  dtype = 'float')
-    success, dhvalue = joint_to_dhvalue(joint, 1)
-    for i in dhvalue:
-        print(i)
-    print(success)
-if __name__ == "__main__":
-    main()
+# def main():
+#     print("yes")
+#     joint  = np.array([m.pi/6, m.pi/2, 0.4,    0,   0,       m.pi/4,       m.pi/4],  dtype = 'float')
+#     success, dhvalue = joint_to_dhvalue(joint, 1)
+#     for i in dhvalue:
+#         print(i)
+#     print(success)
+# if __name__ == "__main__":
+#     main()
