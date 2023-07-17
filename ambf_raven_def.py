@@ -25,7 +25,7 @@ DANCE_SCALE_JOINTS = np.array([   0.3,          0.3,  0.06,             0.3, 1.2
 
 RAVEN_JOINT_LIMITS = np.array([[    0.0,          m.pi/4,           -0.17, -m.pi*2, -2, -2, -2],
                                [m.pi/2, (m.pi*3)/4, 0.1, m.pi*2, 2, 2, 2]])
-RAVEN_DH_ALPHA     = np.array([[     0, np.deg2rad(-75), np.deg2rad(128),     0, m.pi/2, m.pi/2, 0],
+RAVEN_DH_ALPHA     = np.array([[     0, np.deg2rad(75), np.deg2rad(128),     0, m.pi/2, m.pi/2, 0],
                                [  m.pi,  np.deg2rad(75),  np.deg2rad(52),     0, m.pi/2, m.pi/2, 0]], dtype = 'float')
 RAVEN_DH_THETA     = np.array([[     V,               V,          m.pi/2,     V,      V,      V, 0],
                                [     V,               V,         -m.pi/2,     V,      V,      V, 0]], dtype = 'float')

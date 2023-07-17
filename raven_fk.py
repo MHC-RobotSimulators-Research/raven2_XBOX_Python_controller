@@ -116,7 +116,6 @@ def fwd_kinematics_p5(arm, input_joint_pos):
         dh_a[i] = RAVEN_DH_A[arm][i]
 
     output_transformation = np.matmul(np.matmul(RAVEN_T_CB, RAVEN_T_B0[arm]), fwd_trans(0, 5, dh_alpha, dh_theta, dh_a, dh_d))
-    print(type(output_transformation))
     return output_transformation
 
 # def main():

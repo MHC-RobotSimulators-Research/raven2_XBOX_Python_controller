@@ -78,7 +78,7 @@ class raven2_py_controller():
         #self.command_type = 'relative' # can be 'relative' or 'absolute', if 'relative' the command will be sent through 'jr' in CRTK, if 'absolute', the command will be sent through 'jp'
 
         self.measured_cpos_tranform = np.zeros((4,4)) # np.array 4x4 transform matrix of the end-effector measured position
-        self.measured_jpos = None # (15,) array of measured joint position
+        self.measured_jpos = np.concatenate([np.zeros(1), ard.HOME_JOINTS, np.zeros(7)]) # (15,) array of measured joint position
         self.measured_jvel = None # (15,) array of measured joint velocity
         self.measured_jeff = None # (15,) array of measured joint effort
 
@@ -86,6 +86,10 @@ class raven2_py_controller():
         
         #add xbox controller
         self.cmd = xbox_controller()
+        #initualize steps from current increment to new joint positions
+        self.man_step = 20
+        #new joint position
+        self.new_jp = np.zeros(7)
         self.__init_pub_sub()
 
         #boolean if pass the limit
@@ -143,7 +147,13 @@ class raven2_py_controller():
         self.__publisher_servo_gp = rospy.Publisher(topic, sensor_msgs.msg.JointState, latch = True, queue_size = 1)
 
         return None
-
+    def get_measured_jpos(self):
+        return self.measured_jpos
+    
+    def set_jp(self, new_jr):
+        self.measured_jpos = new_jr + self.measured_jpos
+        return 
+    
     def __check_max_jpose_command(self, joint_command):
         diff = self.max_jr - np.abs(joint_command)
         print("joint command",joint_command)
@@ -309,9 +319,9 @@ class raven2_py_controller():
     
         msg.header.stamp = msg.header.stamp.now()
         t = msg.transform
-        t.translation.x = 0.00011
-        t.translation.y = 0.00012
-        t.translation.z = 0.00013
+        t.translation.x = x
+        t.translation.y = y
+        t.translation.z = z
 
         interval_pub = time.time() - self.time_last_pub_move
         #print(str(interval_pub)) # [debug]
@@ -339,16 +349,19 @@ class raven2_py_controller():
                 joints not set by cartesian coordinates in inv_kinematics_p5
         """
         #curr_jp = np.array(self.measured_jpos, dtype="float")
-        #curr_jp = ard.HOME_JOINTS
-        curr_jp = np.zeros(7,dtype="float")
-        print("current joint positions: " + str(curr_jp))
+        curr_jp = ard.HOME_JOINTS
+        #curr_jp = np.zeros(7,dtype="float")
+        #print("current joint positions: " + str(curr_jp))
         if p5:
             curr_tm = fk.fwd_kinematics_p5(arm, curr_jp)
         else:
             curr_tm = fk.fwd_kinematics(arm, curr_jp)
-        curr_tm[0, 3] += 0
-        curr_tm[1, 3] += 0
-        curr_tm[2, 3] += 0
+        curr_tm[0, 3] += x
+        print("x: ",x)
+        curr_tm[1, 3] += y
+        print("y: ", y)
+        curr_tm[2, 3] += z
+        print("z: ", z)
         if p5:
             jpl = ik.inv_kinematics_p5(arm, curr_tm, gangle, home_dh)
         else:
@@ -356,13 +369,30 @@ class raven2_py_controller():
         self.limited[arm] = jpl[1]
         if self.limited[arm]:
             print("Desired cartesian position is out of bounds for Raven2. Will move to max pos.")
-        new_jp = jpl[0]
-        print(new_jp)
+        self.new_jp = jpl[0]
+        print(self.new_jp)
         #transform new joint position into joint position to increment
-        jr = np.zeros(7)
-        for i in range(len(jr)):
-            jr[i] = new_jp[i] - curr_jp[i]
-        return jr
+        # jr = np.zeros(7, dtype= "float")
+        # for i in range(len(jr)):
+        #         jr[i] = (self.new_jp[i] - curr_jp[i])
+        #         print("joint increment: ",jr[i])
+        return
 
         # print("fk ", timeit.timeit(lambda: fk.fwd_kinematics_p5(arm, curr_jp), setup="pass",number=1))
         # print("ik ", timeit.timeit(lambda: ik.inv_kinematics_p5(arm, curr_tm, gangle), setup="pass", number=1))
+    def countDistance(self):
+        return self.new_jp - self.get_measured_jpos()
+    
+    def move(self):
+        diff_jp = np.zeros(7)
+        dis = np.zeros(7)
+        for i in range(self.man_step):
+            dis = self.countDistance()
+            print("dis: ", dis)
+            scale = min(1.0*i/self.man_step,1.0)
+            temp = np.zeros(8)
+            jr = np.concatenate([np.zeros(1),scale*dis,temp])
+            self.pub_jr_command(jr)
+            self.set_jp(jr)
+            diff_jp = abs(self.new_jp - self.get_measured_jpos())
+        return
