@@ -3,7 +3,9 @@ from inputs import get_gamepad
 from inputs import devices
 import math
 import threading
-
+import raven_ik as ik
+import raven_fk as fk
+import ambf_raven_def as ard
 class xbox_controller:
     """
     Gets the state of xbox controller inputs using the inputs library. Modified from
@@ -111,7 +113,7 @@ class xbox_controller:
 
 if __name__ == '__main__':
     joy = xbox_controller()
-    print(joy)
+    print(fk.fwd_kinematics_p5(0, ard.HOME_JOINTS))
     # joy.rumble(1, 1, 100)
 
     while True:

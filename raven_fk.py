@@ -84,8 +84,6 @@ def fwd_kinematics(arm, input_joint_pos):
     print(dh_alpha)
 
     output_transformation = np.matmul(np.matmul(RAVEN_T_CB, RAVEN_T_B0[arm]), fwd_trans(0, 6, dh_alpha, dh_theta, dh_a, dh_d))
-
-    #print(type(output_transformation))
     return output_transformation
 
 def fwd_kinematics_p5(arm, input_joint_pos):
@@ -118,12 +116,10 @@ def fwd_kinematics_p5(arm, input_joint_pos):
     output_transformation = np.matmul(np.matmul(RAVEN_T_CB, RAVEN_T_B0[arm]), fwd_trans(0, 5, dh_alpha, dh_theta, dh_a, dh_d))
     return output_transformation
 
-# def main():
-#     print("yes")
-#     joint  = np.array([m.pi/6, m.pi/2, 0.4,    0,   0,       m.pi/4,       m.pi/4],  dtype = 'float')
-#     success, dhvalue = joint_to_dhvalue(joint, 1)
-#     for i in dhvalue:
-#         print(i)
-#     print(success)
-# if __name__ == "__main__":
-#     main()
+def main():
+    print("yes")
+    joint  = np.array([0.5217216610908508, 1.5799641609191895, 0.40040287375450134, 0.06240818649530411, -0.006050971802324057, 0.7633852362632751, 0.7971110939979553],  dtype = 'float')
+    success, dhvalue = joint_to_dhvalue(joint, 1)
+    print(dhvalue)
+if __name__ == "__main__":
+    main()

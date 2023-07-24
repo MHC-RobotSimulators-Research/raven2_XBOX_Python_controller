@@ -71,7 +71,7 @@ count_interval_cmd = 0
 xbox = xbox_controller()
 arm_control = [True, True]
 # how much the raw input values will be divided into x,y,z
-div = 1000 # may change later if too slow
+div = 10000 # may change later if too slow
 dead_zone = 0.1
 
 #man_steps are the steps to divide the distance and increment (man_steps)steps to get to the goal lpos
@@ -86,7 +86,7 @@ gangle = [0.0,0.0]
 # DH values for home position of each arm
 home_dh = HOME_DH
 # arm_control is a list of boolean: 0 is arm left, 1 is arm right 
-while working==1 and count_interval_cmd<=100:
+while working==1 and count_interval_cmd<=300:
     controller = xbox.read()
     print("controller: ",controller)
     '''
@@ -124,11 +124,9 @@ while working==1 and count_interval_cmd<=100:
     
     # Set which control mode to use
     if controller[2][4] and controller[2][5]:
-        print("working both")
         arm_control[0] = True
         arm_control[1] = True
     elif controller[2][4]:
-        print("working left")
         arm_control[0] = True
         arm_control[1] = False
     elif controller[2][5]:
@@ -137,7 +135,6 @@ while working==1 and count_interval_cmd<=100:
     
     # mod 1: 2 arms controller
     if arm_control[0] and arm_control[1]:
-        print("working here")
         # update coordinates for left arm, x and y are swaped for more intuitive
         if controller[0][3] == 1 and dead_zone < abs(controller[0][1]):
             z[0] = -controller[0][1] / div
@@ -163,27 +160,28 @@ while working==1 and count_interval_cmd<=100:
 
         # Set gripper angles
         gangle[0] = 1 - (controller[0][2]/4) 
-        # graspher right angle is opposite --> negative
+        # grasper right angle is opposite --> negative
         gangle[1] = -1 + (controller[1][2]/4)
 
         #lpos is a 7 joint positions
-        # ldelta = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
+        r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], False, home_dh= HOME_DH)
         # print("new left joint position: ",lpos)
         # emptypos = np.zeros(8)
         # ljr = np.concatenate([np.zeros(1),lpos,emptypos])
-        # max_jr = np.array([5*Deg2Rad, 5*Deg2Rad, 0.02, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
-        # max_jr = max_jr / 500
+        #max_jr = np.array([5*Deg2Rad, 5*Deg2Rad, 0.02, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
+        #max_jr = max_jr / 500
+        #print(max_jr)
         # max_jr = np.concatenate([np.zeros(1), max_jr])
         # #r2py_ctl_l.pub_jr_command(ljr)
-        # r2py_ctl_l.pub_jr_command(ljr)
+        #r2py_ctl_l.pub_jr_command(max_jr)
         r2py_ctl_l.move()
 
-        # rdelta = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
+        #r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
         # rjr = np.concatenate([np.zeros(1),rpos,emptypos])
         # print("new right joint position: "+ np.array2string(rpos))
         # #r2py_ctl_r.pub_jr_command(rjr)
         # r2py_ctl_r.pub_jr_command(rjr)
-        r2py_ctl_r.move()
+        #r2py_ctl_r.move()
 
     # mod 2: fine control of one arm
     elif arm_control[0] or arm_control[1]:

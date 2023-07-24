@@ -302,6 +302,8 @@ def dhvalue_to_joint(dhvalue, gangle, arm):
 def apply_joint_limits(joint):
     limited = False
     for i in range(RAVEN_JOINTS):
+        print("joint " + str(i)+ "inside ik: "  + str(joint[i]))
+
         if i != 2:
             while joint[i] > m.pi:
                 joint[i] -= 2 * m.pi

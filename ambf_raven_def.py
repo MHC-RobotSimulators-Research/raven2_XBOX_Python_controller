@@ -17,22 +17,22 @@ Eps          = sys.float_info.epsilon
 
 MAX_JOINTS         = np.array([  m.pi,         m.pi,  0.10,            m.pi,   2, (m.pi * 3)/4, (m.pi * 3)/4],  dtype = 'float')
 MIN_JOINTS         = np.array([ -m.pi,        -m.pi, -0.17,           -m.pi,  -2,            0,            0],  dtype = 'float')
-HOME_JOINTS        = np.array([m.pi/6, m.pi/2, 0.4,    0,   0,       m.pi/4,       m.pi/4],  dtype = 'float')
-HOME_DH            = np.array([[0.5235987755982988, 1.5707963267948966, 0.4, 0.0, 0.0, 0.0, 0.7853981633974483],
-                                [0.5235987755982988,1.5707963267948966, 0.4, 0.0, 0.0, -0.0, 0.7853981633974483]],
+HOME_JOINTS        = np.array([0.5217216610908508, 1.5799641609191895, 0.40040287375450134, 0.06240818649530411, -0.006050971802324057, 0.7633852362632751, 0.7971110939979553],dtype = 'float')
+HOME_DH            = np.array([[ 0.52172166,  1.57996416,  0.40040287,  0.06240819, -0.00605097, -0.03372586, 0.79711109],
+                                [ 0.52172166,  1.57996416,  0.40040287,  0.06240819, -0.00605097,  0.03372586, 0.79711109]],
                                 dtype="float")
 DANCE_SCALE_JOINTS = np.array([   0.3,          0.3,  0.06,             0.3, 1.2,       m.pi/6,       m.pi/6],  dtype = 'float')
 
-RAVEN_JOINT_LIMITS = np.array([[    0.0,          m.pi/4,           -0.17, -m.pi*2, -2, -2, -2],
-                               [m.pi/2, (m.pi*3)/4, 0.1, m.pi*2, 2, 2, 2]])
+RAVEN_JOINT_LIMITS = np.array([[    0.0,          m.pi/4,           0.23, -m.pi*2, -2, -2, -2],
+                               [m.pi/2, (m.pi*3)/4, 0.56, m.pi*2, 2, 2, 2]])
 RAVEN_DH_ALPHA     = np.array([[     0, np.deg2rad(75), np.deg2rad(128),     0, m.pi/2, m.pi/2, 0],
                                [  m.pi,  np.deg2rad(75),  np.deg2rad(52),     0, m.pi/2, m.pi/2, 0]], dtype = 'float')
 RAVEN_DH_THETA     = np.array([[     V,               V,          m.pi/2,     V,      V,      V, 0],
                                [     V,               V,         -m.pi/2,     V,      V,      V, 0]], dtype = 'float')
 RAVEN_DH_A         = np.array([[     0,               0,               0,     0,      0,  0.013, 0],
                                [     0,               0,               0,     0,      0,  0.013, 0]], dtype = 'float')
-RAVEN_DH_D         = np.array([[     0,               0,               V, -0.47,      0,      0, 0],
-                               [     0,               0,               V, -0.47,      0,      0, 0]], dtype = 'float')
+RAVEN_DH_D         = np.array([[     0,               0,               V, -0.482,      0,      0, 0],
+                               [     0,               0,               V, -0.482,      0,      0, 0]], dtype = 'float')
 
 RAVEN_IKIN_PARAM   = np.array([float(m.sin(RAVEN_DH_ALPHA[0][1])),
                                 float(m.cos(RAVEN_DH_ALPHA[0][1])),

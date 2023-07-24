@@ -57,7 +57,7 @@ class raven2_py_controller():
 
         #self.joint_velocity_factor = np.array([1e-5, 1e-5 1e-5, 1e-5, 1e-5, 1e-5, 1e-5, 1e-5]) # 1e-5 means target speed is 1.0cm (1e-5 m) per second
 
-        self.max_jr = np.array([5*Deg2Rad, 5*Deg2Rad, 0.02, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
+        self.max_jr = np.array([5*Deg2Rad, 5*Deg2Rad, 0.02, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) #, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
         #add max_cr
         self.max_cr = 0.00018
         self.rate_pub = 500 # !IMPT This is the publish rate of the motion command publisher. It must be tested, because it will affect the real time factor and thus affect the speed. If you are not sure or cannot test, use a large rate (such as 1000) can be safer.
@@ -78,17 +78,19 @@ class raven2_py_controller():
         #self.command_type = 'relative' # can be 'relative' or 'absolute', if 'relative' the command will be sent through 'jr' in CRTK, if 'absolute', the command will be sent through 'jp'
 
         self.measured_cpos_tranform = np.zeros((4,4)) # np.array 4x4 transform matrix of the end-effector measured position
-        self.measured_jpos = np.concatenate([np.zeros(1), ard.HOME_JOINTS, np.zeros(7)]) # (15,) array of measured joint position
+        self.measured_jpos = None # (15,) array of measured joint position
         self.measured_jvel = None # (15,) array of measured joint velocity
         self.measured_jeff = None # (15,) array of measured joint effort
 
         self.pub_count_motion = 0 # The counts or how many motion command messages are sent
-        
-        #add xbox controller
+        # temp_measured_joint: replace measured_jpos when cannot connect with raven computer
+        # size 15 to match with measured_joint, when start set it to home_joints
+        self.temp_measured_jpos = ard.HOME_JOINTS
+        # add xbox controller
         self.cmd = xbox_controller()
-        #initualize steps from current increment to new joint positions
+        # initualize steps from current increment to new joint positions
         self.man_step = 20
-        #new joint position
+        # new joint position
         self.new_jp = np.zeros(7)
         self.__init_pub_sub()
 
@@ -147,16 +149,23 @@ class raven2_py_controller():
         self.__publisher_servo_gp = rospy.Publisher(topic, sensor_msgs.msg.JointState, latch = True, queue_size = 1)
 
         return None
-    def get_measured_jpos(self):
-        return self.measured_jpos
+    
+    """
+    getter and setter for temp_measured_jpos 
+    for substituting self.measured_jpos when cannot connecting with Raven computer
+    """
+    def get_temp_measured_jpos(self):
+        return self.temp_measured_jpos
     
     def set_jp(self, new_jr):
-        self.measured_jpos = new_jr + self.measured_jpos
+        self.temp_measured_jpos = new_jr + self.temp_measured_jpos
         return 
     
     def __check_max_jpose_command(self, joint_command):
         diff = self.max_jr - np.abs(joint_command)
-        print("joint command",joint_command)
+        print("max_jr: ", self.max_jr)
+        print("joint command: ", joint_command)
+        #print("joint command",joint_command)
         #joint 2: 0.785398163
         #joint 3: -0.0000000000000000000555111512
         #joint 6: -0.5
@@ -188,6 +197,7 @@ class raven2_py_controller():
 
     def __callback_measured_jp(self, msg):
         self.measured_jpos = np.array(msg.position)
+        #print("joint position jp: ", self.measured_jpos)
         self.measured_jvel = np.array(msg.velocity)
         self.measured_jeff = np.array(msg.effort)
         return None
@@ -227,7 +237,7 @@ class raven2_py_controller():
     # [Note]: There is no clear reason why the dimension of the joint command is 15 in CRTK RAVEN. But it is confirmed that this is not to control 2 arms. Each arm should have its own controller node
     def pub_jr_command(self, joint_command):
 
-        joint_command = joint_command[1:] # This is to meet the format of CRTK, where joint 1 is at index 0
+        #joint_command = joint_command[1:] # This is to meet the format of CRTK, where joint 1 is at index 0
         
         max_check = self.__check_max_jpose_command(joint_command)
         if max_check.size != 0:
@@ -348,12 +358,14 @@ class raven2_py_controller():
             home_dh (array) : array containing home position, or desired postion of the
                 joints not set by cartesian coordinates in inv_kinematics_p5
         """
-        #curr_jp = np.array(self.measured_jpos, dtype="float")
-        curr_jp = ard.HOME_JOINTS
+        #curr_jp = self.measured_jpos
+        #print("size curr_jp: ", len(self.measured_jpos))
+        curr_jp = self.measured_jpos
         #curr_jp = np.zeros(7,dtype="float")
         #print("current joint positions: " + str(curr_jp))
         if p5:
             curr_tm = fk.fwd_kinematics_p5(arm, curr_jp)
+            print(curr_tm)
         else:
             curr_tm = fk.fwd_kinematics(arm, curr_jp)
         curr_tm[0, 3] += x
@@ -362,6 +374,7 @@ class raven2_py_controller():
         print("y: ", y)
         curr_tm[2, 3] += z
         print("z: ", z)
+        print(curr_tm)
         if p5:
             jpl = ik.inv_kinematics_p5(arm, curr_tm, gangle, home_dh)
         else:
@@ -371,28 +384,35 @@ class raven2_py_controller():
             print("Desired cartesian position is out of bounds for Raven2. Will move to max pos.")
         self.new_jp = jpl[0]
         print(self.new_jp)
-        #transform new joint position into joint position to increment
-        # jr = np.zeros(7, dtype= "float")
-        # for i in range(len(jr)):
-        #         jr[i] = (self.new_jp[i] - curr_jp[i])
-        #         print("joint increment: ",jr[i])
         return
-
-        # print("fk ", timeit.timeit(lambda: fk.fwd_kinematics_p5(arm, curr_jp), setup="pass",number=1))
-        # print("ik ", timeit.timeit(lambda: ik.inv_kinematics_p5(arm, curr_tm, gangle), setup="pass", number=1))
+    
+    # return a np array sized 7
     def countDistance(self):
-        return self.new_jp - self.get_measured_jpos()
+        print('new_jp: ', self.new_jp)
+        print('measured_jpos: ', self.measured_jpos)
+        return self.new_jp - self.measured_jpos
+        #return self.new_jp - self.get_temp_measured_jpos()
     
     def move(self):
         diff_jp = np.zeros(7)
         dis = np.zeros(7)
         for i in range(self.man_step):
             dis = self.countDistance()
-            print("dis: ", dis)
             scale = min(1.0*i/self.man_step,1.0)
-            temp = np.zeros(8)
-            jr = np.concatenate([np.zeros(1),scale*dis,temp])
+            jr = scale* dis
+            print("jr: ",jr)
             self.pub_jr_command(jr)
-            self.set_jp(jr)
-            diff_jp = abs(self.new_jp - self.get_measured_jpos())
+            #self.set_jp(jr)
         return
+    
+    # helper method to convert numpy array size 7 to np array size 15
+    def seven2fifthteen (self, arr7):
+        return np.concatenate([np.zeros(1), arr7, np.zeros(7)])
+    
+    # convert array size 7 to 16 
+    def seven2sixteen (self, arr7):
+        return np.concatenate([np.zeros(1), arr7, np.zeros(8)])
+    # helper method to convert numpy array size 15 to np array size 7
+    def fifthteen2seven (self, arr15):
+        
+        return arr15[1:8]
