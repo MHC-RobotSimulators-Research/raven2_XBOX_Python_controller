@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import raven_py_controller
+import raven_py_xbox_controller
 from xbox_controller import xbox_controller
 from ambf_raven_def import *
 """
@@ -37,8 +37,8 @@ import time
 import utils_r2_keyboard_controller as utils
 import rospy
 import numpy as np
-import raven_py_controller
-
+import raven_py_xbox_controller
+import ambf_raven_def as ard
 command_interval = 0.2 # [IMPT]: 0,2 is usually good, increase this factor will cause a larger control delay, but may increase the publishing rate
 
 velocity_joint_1 = 3 # degree/s
@@ -57,9 +57,11 @@ tty.setcbreak(sys.stdin)
 
 rospy.init_node('raven_keyboard_controller', anonymous=True)
 
-r2py_ctl_l = raven_py_controller.raven2_py_controller(name_space = ' ', robot_name = 'arm1', grasper_name = 'grasp1')
-r2py_ctl_r = raven_py_controller.raven2_py_controller(name_space = ' ', robot_name = 'arm2', grasper_name = 'grasp2')
+r2py_ctl_l = raven_py_xbox_controller.raven2_py_controller(name_space = ' ', robot_name = 'arm1', grasper_name = 'grasp1')
+r2py_ctl_r = raven_py_xbox_controller.raven2_py_controller(name_space = ' ', robot_name = 'arm2', grasper_name = 'grasp2')
 r2py_ctl_l.pub_state_command('resume')
+r2py_ctl_r.pub_state_command('resume')
+
 
 x = 0
 working = 1
@@ -69,26 +71,65 @@ time_last_key_command = 0
 count_interval_cmd = 0
 
 xbox = xbox_controller()
+time.sleep(5)
 arm_control = [True, True]
 # how much the raw input values will be divided into x,y,z
-div = 10000 # may change later if too slow
+div = 500 # may change later if too slow
 dead_zone = 0.1
 
 #man_steps are the steps to divide the distance and increment (man_steps)steps to get to the goal lpos
 man_steps = 17
-# initialize x,y,z for both arms
-x = [0.0,0.0]
-y = [0.0,0.0]
-z = [0.0,0.0]
+# initialize x,y,z for both arms <-- should be inside of move function so it gets sets to 0 at every loop
+# x = [0.0,0.0]
+# y = [0.0,0.0]
+# z = [0.0,0.0]
 
 # initialize grasper angles for both arms
 gangle = [0.0,0.0]
 # DH values for home position of each arm
 home_dh = HOME_DH
+def move():
+    dis = np.zeros(7)
+    # Find safe increment
+    # safe_increment = int(max(r2py_ctl_l.calc_increment(), r2py_ctl_r.calc_increment()))
+    safe_increment = int(r2py_ctl_l.calc_increment())
+
+
+    if safe_increment <= man_steps:
+        increments = man_steps
+    else:
+        increments = safe_increment
+    print("inc:", increments)
+
+    distl = r2py_ctl_l.countDistance()
+    #distr = r2py_ctl_r.countDistance()
+
+    scale = 1 / increments
+    jrl = scale* distl
+    #jrr = scale* distr
+
+    for i in range(increments):
+        # distl = r2py_ctl_l.countDistance()
+        # distr = r2py_ctl_r.countDista
+        # nce()
+        # scale = min(1.0*i/increments,1.0)
+        # jrl = scale* distl
+        # jrr = scale* distr
+        r2py_ctl_l.pub_jr_command(r2py_ctl_l.seven2sixteen(jrl))
+        #r2py_ctl_l.set_jp(jrl)
+        #r2py_ctl_r.pub_jr_command(r2py_ctl_r.seven2sixteen(jrr))
+        #r2py_ctl_r.set_jp(jrr)
+    return
 # arm_control is a list of boolean: 0 is arm left, 1 is arm right 
-while working==1 and count_interval_cmd<=300:
+# while working==1 and count_interval_cmd<=2:
+while working==1:
+    
+    x = [0.0,0.0]
+    y = [0.0,0.0]
+    z = [0.0,0.0]
+    
     controller = xbox.read()
-    print("controller: ",controller)
+    print("controller: ", controller)
     '''
     Manual control mode for the simulated raven2 using an xbox controller. There are two
     modes. The first enables simultaneous control of both arms on the xyz axes, but locks
@@ -138,16 +179,16 @@ while working==1 and count_interval_cmd<=300:
         # update coordinates for left arm, x and y are swaped for more intuitive
         if controller[0][3] == 1 and dead_zone < abs(controller[0][1]):
             z[0] = -controller[0][1] / div
-            print("z from controller ly, lt, lb: ", z[0])
+            # print("z from controller ly, lt, lb: ", z[0])
         else: 
-            print("controller lx testing: ", controller[0][0])
+            # print("controller lx testing: ", controller[0][0])
             if dead_zone< abs(controller[0][0]):
                 y[0] = -controller[0][0] / div
-                print("y from controller lx: ", y[0])
+                # print("y from controller lx: ", y[0])
 
             if dead_zone < abs(controller[0][1]):
                 x[0] = -controller[0][1] / div
-                print("x from controller ly: ", x[0])                
+                # print("x from controller ly: ", x[0])                
 
         # update coordinates for right arm, x and y are swaped
         if controller[1][3] == 1 and dead_zone < abs (controller[1][1]):
@@ -158,30 +199,16 @@ while working==1 and count_interval_cmd<=300:
             if dead_zone < abs(controller[1][1]):
                 x[1] = -controller[1][1] / div
 
+        print("coords: ", x, y, z)
+
         # Set gripper angles
-        gangle[0] = 1 - (controller[0][2]/4) 
+        gangle[0] = 1 - (controller[0][2]/4) #ard.HOME_JOINTS[5]+ ard.HOME_JOINTS[6]
         # grasper right angle is opposite --> negative
-        gangle[1] = -1 + (controller[1][2]/4)
+        #gangle[1] = -1 + (controller[1][2]/4) #ard.HOME_JOINTS[5]+ ard.HOME_JOINTS[6]
 
-        #lpos is a 7 joint positions
-        r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], False, home_dh= HOME_DH)
-        # print("new left joint position: ",lpos)
-        # emptypos = np.zeros(8)
-        # ljr = np.concatenate([np.zeros(1),lpos,emptypos])
-        #max_jr = np.array([5*Deg2Rad, 5*Deg2Rad, 0.02, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad, 15*Deg2Rad]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
-        #max_jr = max_jr / 500
-        #print(max_jr)
-        # max_jr = np.concatenate([np.zeros(1), max_jr])
-        # #r2py_ctl_l.pub_jr_command(ljr)
-        #r2py_ctl_l.pub_jr_command(max_jr)
-        r2py_ctl_l.move()
-
+        r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
         #r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
-        # rjr = np.concatenate([np.zeros(1),rpos,emptypos])
-        # print("new right joint position: "+ np.array2string(rpos))
-        # #r2py_ctl_r.pub_jr_command(rjr)
-        # r2py_ctl_r.pub_jr_command(rjr)
-        #r2py_ctl_r.move()
+        move()
 
     # mod 2: fine control of one arm
     elif arm_control[0] or arm_control[1]:
@@ -211,7 +238,7 @@ while working==1 and count_interval_cmd<=300:
             # Position j5
             j5 = m.sqrt(controller[1][0] ** 2 + controller[1][1] **2)
             if controller[1][0] < 0:
-                home_dh [arm][4] = j5
+                home_dh[arm][4] = j5
             else:
                 home_dh[arm][4] = -j5
             
@@ -220,13 +247,10 @@ while working==1 and count_interval_cmd<=300:
             home_dh[arm][3] = j4
 
         # Plan new position based off of desired cartesian changes
-        if arm == 0:
-            lpos = r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
-            r2py_ctl_l.pub_jr_command(lpos)
 
-        elif arm == 1:
-            rpos = r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
-            r2py_ctl_r.pub_jr_command(rpos)
+        r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], False, home_dh= HOME_DH)
+        r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], False, home_dh= HOME_DH)
+        move()
     
 
 termios.tcsetattr(sys.stdin, termios.TCSADRAIN,filedescriptors)

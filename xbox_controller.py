@@ -111,13 +111,13 @@ class xbox_controller:
                 elif event.code == 'BTN_TRIGGER_HAPPY4':
                     self.DownDPad = event.state
 
-if __name__ == '__main__':
-    joy = xbox_controller()
-    print(fk.fwd_kinematics_p5(0, ard.HOME_JOINTS))
-    # joy.rumble(1, 1, 100)
+# if __name__ == '__main__':
+#     joy = xbox_controller()
+#     print(fk.fwd_kinematics_p5(0, ard.HOME_JOINTS))
+#     # joy.rumble(1, 1, 100)
 
-    while True:
-        # for event in get_gamepad():
+#     while True:
+#         # for event in get_gamepad():
 
-        #     print(event.code)
-        print(joy.read())
+#         #     print(event.code)
+#         print(joy.read())
