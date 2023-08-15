@@ -119,7 +119,12 @@ class raven2_py_controller():
         self.__subscriber_measured_cp = rospy.Subscriber(topic, geometry_msgs.msg.TransformStamped, self.__callback_measured_cp)
 
         # topic = "/" + self.robot_name + "/measured_js" # [IMPT] this should be the usual case
-        topic = "/arm2/measured_js" # [IMPT] This line is because the RAVEN I use has a mismatch that the arm1's jpos is published on arm2
+        if self.robot_name == "arm1":
+            topic = "/arm2/measured_js" # [IMPT] This line is because the RAVEN I use has a mismatch that the arm1's jpos is published on arm2
+        elif self.robot_name == "arm2":
+            topic = "/arm1/measured_js" # [IMPT] This line is because the RAVEN I use has a mismatch that the arm1's jpos is published on arm2
+
+        #topic = "/arm2/measured_js" # [IMPT] This line is because the RAVEN I use has a mismatch that the arm1's jpos is published on arm2
         self.__subscriber_measured_js = rospy.Subscriber(topic, sensor_msgs.msg.JointState, self.__callback_measured_jp)
 
         # robot movement publishers
@@ -243,7 +248,8 @@ class raven2_py_controller():
         # joint_command = np.array([0.0005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005,  0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005, 0.00005]) # This is the max velocity of jr command, should be rad/sec and m/sec for rotation and translation joints 
 
         joint_command = joint_command[1:] # This is to meet the format of CRTK, where joint 1 is at index 0
-        
+        #joint_command[5] = 0
+        #joint_command[6] = 0
         max_check = self.__check_max_jpose_command(joint_command)
         if max_check.size != 0:
             print('Command velocity too fast, joints: ')
@@ -394,6 +400,7 @@ class raven2_py_controller():
         #print("current joint positions: " + str(curr_jp))
         if p5:
             curr_tm = fk.fwd_kinematics_p5(arm, curr_jp)
+            #print(curr_tm) 
             print(curr_tm)
         else:
             curr_tm = fk.fwd_kinematics(arm, curr_jp)

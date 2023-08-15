@@ -1,13 +1,12 @@
 from ambf_raven_def import *
 import math as m
 import numpy as np
-
+import raven_ik as ik
+import ambf_raven_def as ard
 def joint_to_dhvalue(joint, arm):
     success = False
     dhvalue = np.zeros(7, dtype='float')
     if arm < 0 or arm >= RAVEN_ARMS or joint.size != RAVEN_JOINTS:
-        print(str(joint.size))
-        print("arm: " + str(arm))
         return success, dhvalue
     for i in range(RAVEN_JOINTS):
         if i != 2:
@@ -117,9 +116,22 @@ def fwd_kinematics_p5(arm, input_joint_pos):
     return output_transformation
 
 def main():
-    print("yes")
-    joint  = np.array([0.5217216610908508, 1.5799641609191895, 0.40040287375450134, 0.06240818649530411, -0.006050971802324057, 0.7633852362632751, 0.7971110939979553],  dtype = 'float')
-    success, dhvalue = joint_to_dhvalue(joint, 1)
-    print(dhvalue)
+    joint1 = np.array ([0.5216294527053833, 1.5818907022476196, 0.4003618359565735, 0.06717494130134583, -0.0012699863873422146, 0.8005852699279785, 0.8528488874435425])
+    joint2  = np.array([0.5229672789573669, 1.5859100818634033, 0.40006133913993835, -0.05457039922475815, 0.024380048736929893, 0.8693668246269226, 0.7849395871162415],  dtype = 'float')
+    success, dhvalue = joint_to_dhvalue(joint1, 0)
+    print("dh value 1: ", dhvalue)
+    fk5_1 = fwd_kinematics(0, joint1)
+    print("fk5 1: ", fk5_1)
+    jpl_1 = ik.inv_kinematics_p5(0, fk5_1, ard.HOME_JOINTS[5]+ ard.HOME_JOINTS[6], ard.HOME_DH)
+    print("new joint arm 1: ",jpl_1[0])
+
+    success_2, dhvalue_2 = joint_to_dhvalue(joint2, 1)
+    print("dh value 2: ", dhvalue_2)
+    fk5_2 = fwd_kinematics(1, joint2)
+    print("fk5 2: ")
+    print(fk5_2)
+    jpl_2 = ik.inv_kinematics_p5(1, fk5_2, ard.HOME_JOINTS[5] + ard.HOME_JOINTS[6], ard.HOME_DH)
+    print("new joint arm 2: ",jpl_2[0])
+
 if __name__ == "__main__":
     main()

@@ -91,8 +91,8 @@ home_dh = HOME_DH
 def move():
     dis = np.zeros(7)
     # Find safe increment
-    # safe_increment = int(max(r2py_ctl_l.calc_increment(), r2py_ctl_r.calc_increment()))
-    safe_increment = int(r2py_ctl_l.calc_increment())
+    safe_increment = int(max(r2py_ctl_l.calc_increment(), r2py_ctl_r.calc_increment()))
+    # safe_increment = int(r2py_ctl_l.calc_increment())
 
 
     if safe_increment <= man_steps:
@@ -102,11 +102,11 @@ def move():
     print("inc:", increments)
 
     distl = r2py_ctl_l.countDistance()
-    #distr = r2py_ctl_r.countDistance()
+    distr = r2py_ctl_r.countDistance()
 
     scale = 1 / increments
     jrl = scale* distl
-    #jrr = scale* distr
+    jrr = scale* distr
 
     for i in range(increments):
         # distl = r2py_ctl_l.countDistance()
@@ -117,7 +117,7 @@ def move():
         # jrr = scale* distr
         r2py_ctl_l.pub_jr_command(r2py_ctl_l.seven2sixteen(jrl))
         #r2py_ctl_l.set_jp(jrl)
-        #r2py_ctl_r.pub_jr_command(r2py_ctl_r.seven2sixteen(jrr))
+        r2py_ctl_r.pub_jr_command(r2py_ctl_r.seven2sixteen(jrr))
         #r2py_ctl_r.set_jp(jrr)
     return
 # arm_control is a list of boolean: 0 is arm left, 1 is arm right 
@@ -204,10 +204,10 @@ while working==1:
         # Set gripper angles
         gangle[0] = 1 - (controller[0][2]/4) #ard.HOME_JOINTS[5]+ ard.HOME_JOINTS[6]
         # grasper right angle is opposite --> negative
-        #gangle[1] = -1 + (controller[1][2]/4) #ard.HOME_JOINTS[5]+ ard.HOME_JOINTS[6]
+        gangle[1] = 1 - (controller[1][2]/4) #ard.HOME_JOINTS[5] +ard.HOME_JOINTS[6] 
 
         r2py_ctl_l.manual_move(0, x[0], y[0], z[0], gangle[0], True, home_dh= HOME_DH)
-        #r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
+        r2py_ctl_r.manual_move(1, x[1], y[1], z[1], gangle[1], True, home_dh= HOME_DH)
         move()
 
     # mod 2: fine control of one arm
