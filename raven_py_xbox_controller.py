@@ -95,9 +95,15 @@ class raven2_py_controller():
         # new joint position
         self.new_jp = np.zeros(7)
         self.__init_pub_sub()
-
-        #boolean if pass the limit
+        # initual joint position
+        self.start_jp = self.measured_jpos
+        self.new_jp = self.start_jp
+        # boolean if pass the limit
         self.limited = [False, False]
+
+        self.homed = [False, False]
+        self.moved = [False, False]
+        self.home_joints = ard.HOME_JOINTS
         return None
 
     def __del__(self):
@@ -359,10 +365,10 @@ class raven2_py_controller():
     
         # return a np array sized 7
     def countDistance(self):
-        #print('new_jp: ', self.new_jp)
-        #print('measured_jpos: ', self.measured_jpos)
-        return self.new_jp - self.measured_jpos
-        #return self.new_jp - self.get_temp_measured_jpos()
+        # print('new_jp: ', self.new_jp)
+        # print('measured_jpos: ', self.measured_jpos)
+        return self.new_jp - self.start_jp
+        # return self.new_jp - self.get_temp_measured_jpos()
 
     def calc_increment(self):
         """
@@ -380,7 +386,7 @@ class raven2_py_controller():
         #print("increments: ", increment)
         return max(map(abs, increment)) + 1
 
-    def manual_move(self, arm, x, y, z, gangle, p5=False, home_dh=ard.HOME_DH):
+    def plan_move(self, arm, x, y, z, gangle, p5=False, home_dh=ard.HOME_DH):
         """
         moves the desired robot arm based on inputted changes to cartesian coordinates
         Args:
@@ -395,22 +401,17 @@ class raven2_py_controller():
         """
         #curr_jp = self.measured_jpos
         #print("size curr_jp: ", len(self.measured_jpos))
-        curr_jp = self.measured_jpos
+        self.start_jp = self.new_jp
         #curr_jp = np.zeros(7,dtype="float")
         #print("current joint positions: " + str(curr_jp))
         if p5:
-            curr_tm = fk.fwd_kinematics_p5(arm, curr_jp)
+            curr_tm = fk.fwd_kinematics_p5(arm, self.start_jp)
             #print(curr_tm) 
-            print(curr_tm)
         else:
-            curr_tm = fk.fwd_kinematics(arm, curr_jp)
+            curr_tm = fk.fwd_kinematics(arm, self.start_jp)
         curr_tm[0, 3] += x
-        print("x: ",x)
         curr_tm[1, 3] += y
-        print("y: ", y)
-        curr_tm[2, 3] += z
-        print("z: ", z)
-        print(curr_tm)
+        curr_tm[2, 3] += z        
         if p5:
             jpl = ik.inv_kinematics_p5(arm, curr_tm, gangle, home_dh)
         else:
@@ -419,9 +420,11 @@ class raven2_py_controller():
         if self.limited[arm]:
             print("Desired cartesian position is out of bounds for Raven2. Will move to max pos.")
         self.new_jp = jpl[0]
-        print(f"{self.robot_name} new jp: {self.new_jp}")
         return
     
+    def set_home(self):
+        self.new_jp = self.home_joints
+
     # helper method to convert numpy array size 7 to np array size 15
     def seven2fifthteen (self, arr7):
         return np.concatenate([np.zeros(1), arr7, np.zeros(7)])

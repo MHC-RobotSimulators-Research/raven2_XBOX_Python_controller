@@ -119,19 +119,16 @@ def main():
     joint1 = np.array ([0.5216294527053833, 1.5818907022476196, 0.4003618359565735, 0.06717494130134583, -0.0012699863873422146, 0.8005852699279785, 0.8528488874435425])
     joint2  = np.array([0.5229672789573669, 1.5859100818634033, 0.40006133913993835, -0.05457039922475815, 0.024380048736929893, 0.8693668246269226, 0.7849395871162415],  dtype = 'float')
     success, dhvalue = joint_to_dhvalue(joint1, 0)
-    print("dh value 1: ", dhvalue)
     fk5_1 = fwd_kinematics(0, joint1)
-    print("fk5 1: ", fk5_1)
     jpl_1 = ik.inv_kinematics_p5(0, fk5_1, ard.HOME_JOINTS[5]+ ard.HOME_JOINTS[6], ard.HOME_DH)
-    print("new joint arm 1: ",jpl_1[0])
 
     success_2, dhvalue_2 = joint_to_dhvalue(joint2, 1)
-    print("dh value 2: ", dhvalue_2)
+    # print("dh value 2: ", dhvalue_2)
     fk5_2 = fwd_kinematics(1, joint2)
-    print("fk5 2: ")
-    print(fk5_2)
+    # print("fk5 2: ")
+    # print(fk5_2)
     jpl_2 = ik.inv_kinematics_p5(1, fk5_2, ard.HOME_JOINTS[5] + ard.HOME_JOINTS[6], ard.HOME_DH)
-    print("new joint arm 2: ",jpl_2[0])
+    # print("new joint arm 2: ",jpl_2[0])
 
 if __name__ == "__main__":
     main()

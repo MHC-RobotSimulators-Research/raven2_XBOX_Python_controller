@@ -117,7 +117,7 @@ def inv_kinematics(arm, input_cp, input_gangle):
             Bmx = np.matrix([[BB1,  BB2, 0],
                              [BB2, -BB1, 0],
                              [  0,    0, 1]])
-        scth1 = np.ones(4, dtype = 'float')
+        scth1 = np.ones(4, dtype = 'float2')
         scth1[:3] = np.matmul(np.linalg.inv(Bmx), xyp05[:3]) * (1 / d)
         iksol[i][0] = m.atan2(scth1[1], scth1[0])
 
@@ -209,7 +209,7 @@ def inv_kinematics_p5(arm, input_cp, input_gangle, home_dh):
     if insertion <= RAVEN_IKIN_PARAM[5]:
         print("WARNING: Raven mechanism at RCM singularity. IK failing.")
         ikcheck[0] = ikcheck[1] = False
-        ikcheck[3] = ikcheck[4] = False
+        ikcheck[2] = ikcheck[3] = False
 
     # sets prismatic joint as higher or lower depending on how high or low the 5th frame is relative to the 0th frame
     iksol[0][2] = iksol[1][2] = - RAVEN_IKIN_PARAM[4] - insertion
@@ -302,7 +302,7 @@ def dhvalue_to_joint(dhvalue, gangle, arm):
 def apply_joint_limits(joint):
     limited = False
     for i in range(RAVEN_JOINTS):
-        print("joint " + str(i)+ "inside ik: "  + str(joint[i]))
+        # print("joint " + str(i)+ "inside ik: "  + str(joint[i]))
 
         if i != 2:
             while joint[i] > m.pi:
